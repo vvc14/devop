@@ -90,7 +90,9 @@ install_missing_packages \
     openssh-client \
     dnsutils \
     net-tools \
-    iproute2
+    iproute2 \
+    openssl \
+    tar
 
 echo "=========================================="
 echo " 3. Installing Python"
@@ -233,7 +235,62 @@ else
 fi
 
 echo "=========================================="
-echo " 9. Verification"
+echo " 9. Installing Postman Desktop"
+echo "=========================================="
+
+if ! command -v postman >/dev/null 2>&1; then
+
+    case "$ARCH" in
+        amd64)
+            POSTMAN_URL="https://dl.pstmn.io/download/latest/linux64"
+            ;;
+        arm64)
+            POSTMAN_URL="https://dl.pstmn.io/download/latest/linux_arm64"
+            ;;
+        *)
+            echo "[!] Postman unsupported architecture: $ARCH"
+            POSTMAN_URL=""
+            ;;
+    esac
+
+    if [[ -n "$POSTMAN_URL" ]]; then
+
+        echo "[+] Downloading Postman..."
+
+        curl -fL "$POSTMAN_URL" -o /tmp/postman.tar.gz
+
+        rm -rf /opt/Postman
+
+        tar -xzf /tmp/postman.tar.gz -C /opt
+
+        ln -sfn /opt/Postman/Postman /usr/local/bin/postman
+
+        rm -f /tmp/postman.tar.gz
+
+        # Create desktop launcher
+        cat > /usr/share/applications/postman.desktop <<'EOF'
+[Desktop Entry]
+Name=Postman
+Comment=API Development Environment
+Exec=/opt/Postman/Postman %U
+Icon=/opt/Postman/app/resources/app/assets/icon.png
+Terminal=false
+Type=Application
+Categories=Development;
+EOF
+
+        chmod 644 /usr/share/applications/postman.desktop
+
+        echo "[+] Postman installed successfully"
+
+    fi
+
+else
+    echo "[=] Postman already installed. Skipping."
+fi
+
+echo "=========================================="
+echo " 10. Verification"
 echo "=========================================="
 
 check_tool() {
@@ -250,7 +307,7 @@ for tool in \
     git python3 pip3 node npm \
     gcc g++ make cmake \
     curl wget jq \
-    docker kubectl kind helm; do
+    docker kubectl kind helm postman; do
 
     check_tool "$tool"
 
@@ -266,6 +323,12 @@ python3 --version
 
 echo "Git:"
 git --version
+
+echo "Node:"
+node --version
+
+echo "NPM:"
+npm --version
 
 echo "Docker:"
 docker --version
@@ -284,6 +347,11 @@ fi
 echo "Helm:"
 if command -v helm >/dev/null 2>&1; then
     helm version --short
+fi
+
+echo "Postman:"
+if command -v postman >/dev/null 2>&1; then
+    echo "Postman installed at $(command -v postman)"
 fi
 
 echo ""
